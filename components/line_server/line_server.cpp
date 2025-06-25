@@ -8,9 +8,10 @@
 #include "esphome/components/network/util.h"
 #include "esphome/components/socket/socket.h"
 
-static const char *const TAG = "line_server";
-
+using esphome::line_server::RingBuffer;
 using namespace esphome;
+
+static const char *const TAG = "line_server";
 
 void LineServerComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up line server...");

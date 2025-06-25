@@ -20,6 +20,8 @@
 #include "esphome/components/sensor/sensor.h"
 #endif
 
+using esphome::line_server::RingBuffer;
+
 class LineServerComponent : public esphome::Component {
 public:
     LineServerComponent() = default;
