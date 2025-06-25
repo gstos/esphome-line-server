@@ -1,82 +1,124 @@
-Stream server for ESPHome
-=========================
+# Line Server for ESPHome
 
-Custom component for ESPHome to expose a UART stream over WiFi or Ethernet. Provides a serial-to-wifi bridge as known
-from ESPLink or ser2net, using ESPHome.
+**LineServer** is a custom ESPHome component based on [@oxan’s stream_server](https://github.com/oxan/esphome-stream-server). 
+It acts as a transparent UART-to-TCP line-oriented bridge, 
+with extended support for line terminators, timeouts, and directional buffers. 
+This makes it ideal for RS-232-based command protocols like RIO (Russound), 
+which use line-based communication patterns.
 
-This component creates a TCP server listening on port 6638 (by default), and relays all data between the connected
-clients and the serial port. It doesn't support any control sequences, telnet options or RFC 2217, just raw data.
+The component listens on a configurable TCP port and forwards lines between UART and TCP clients, 
+flushing on a terminator or idle timeout.
 
-Usage
------
+---
 
-Requires ESPHome v2022.3.0 or newer.
+## Features
+
+- Bi-directional UART–TCP communication
+- Independent ring buffers for UART and TCP
+- Configurable line terminators for each direction
+- Idle flush timeout to handle incomplete lines
+- TCP client tracking with optional sensors
+- Multiple UARTs supported
+- Compatible with Wi-Fi and Ethernet
+
+---
+
+## Requirements
+
+- ESPHome version **2022.3.0** or newer
+
+---
+
+## Installation
 
 ```yaml
 external_components:
-  - source: github://oxan/esphome-stream-server
-
-stream_server:
+  - source: github://gstos/esphome-line-server
+    components: [line_server]
 ```
 
-You can set the UART ID and port to be used under the `stream_server` component.
+## Basic Usage
 
 ```yaml
 uart:
-   id: uart_bus
-   # add further configuration for the UART here
+  id: uart_bus
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 9600
 
-stream_server:
-   uart_id: uart_bus
-   port: 1234
-```
+line_server:
+  uart_id: uart_bus
 
-Sensors
--------
-The server provides a binary sensor that signals whether there currently is a client connected:
+
+## Configuration Options
+
+| Key                  | Type            | Default | Description                                               |
+|-----------------------|------------------|---------|-----------------------------------------------------------|
+| `port`                | integer           | `6638`  | TCP server port                                           |
+| `uart_buffer_size`    | power of 2 int    | `256`   | Buffer size for UART input                                |
+| `tcp_buffer_size`     | power of 2 int    | `256`   | Buffer size for TCP input                                 |
+| `uart_terminator`     | string            | `"\r\n"`| Terminator to flush UART buffer to TCP                    |
+| `tcp_terminator`      | string            | `"\r"`  | Terminator to flush TCP buffer to UART                    |
+| `timeout`             | duration          | `300ms` | Time before incomplete messages are flushed               |
+
+### Example with all options:
+
+```yaml
+line_server:
+  uart_id: uart_bus
+  port: 7000
+  uart_buffer_size: 512
+  tcp_buffer_size: 512
+  uart_terminator: "\r\n"
+  tcp_terminator: "\r"
+  timeout: 500ms
+
+## Sensors
+
+### Binary Sensor: Client Connected
 
 ```yaml
 binary_sensor:
-  - platform: stream_server
+  - platform: line_server
     connected:
-      name: Connected
-```
+      name: TCP Client Connected
 
-It also provides a numeric sensor that indicates the number of connected clients:
-
+### Sensor: Connection Count
 ```yaml
 sensor:
-  - platform: stream_server
-    connection_count:
-      name: Number of connections
+  - platform: line_server
+    connections:
+      name: TCP Client Count
 ```
 
-Advanced
---------
-It is possible to define multiple stream servers for multiple UARTs simultaneously:
+## Multiple UARTs
+
+You can use multiple UARTs with separate line servers:
 
 ```yaml
 uart:
   - id: uart1
-    # ...
+    rx_pin: GPIO16
+    tx_pin: GPIO17
+    baud_rate: 9600
+
   - id: uart2
-    # ...
+    rx_pin: GPIO25
+    tx_pin: GPIO26
+    baud_rate: 19200
 
-stream_server:
+line_server:
   - uart_id: uart1
-    port: 1234
+    port: 7001
+
   - uart_id: uart2
-    port: 1235
+    port: 7002
 ```
 
-The stream server has an internal buffer into which UART data is read before it is transmitted over TCP. The size of
-this buffer can be changed using the `buffer_size` option, and must be a power of two. Increasing the buffer size above
-the default of 128 bytes can help to achieve optimal throughput, and is especially helpful when using high baudrates. It
-can also be necessary to increase the [`rx_buffer_size`][uart-config] option of the UART itself.
+## Notes
 
-```yaml
-stream_server:
-    buffer_size: 2048
-```
+- Buffer sizes must be **powers of two**.
+- Terminators must be **≤ 4 bytes**, UTF-8 encoded.
+- All data is treated as **raw** — no Telnet, RFC2217, or control sequences.
+- Originally based on [esphome-stream-server](https://github.com/oxan/esphome-stream-server) by @oxan.
 
-[uart-config]: https://esphome.io/components/uart.html#configuration-variables
