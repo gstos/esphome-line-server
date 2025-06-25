@@ -40,6 +40,12 @@ public:
         flush_timeout_ms_ = ms;
     }
 
+    void set_uart_buffer_size(size_t size) { this->uart_buf_size_ = size; }
+    void set_tcp_buffer_size(size_t size) { this->tcp_buf_size_ = size; }
+
+    void set_uart_terminator(const std::string &term) { this->uart_terminator_ = term; }
+    void set_tcp_terminator(const std::string &term) { this->tcp_terminator_ = term; }
+
 #ifdef USE_BINARY_SENSOR
     void set_connected_sensor(esphome::binary_sensor::BinarySensor *connected) { this->connected_sensor_ = connected; }
 #endif
