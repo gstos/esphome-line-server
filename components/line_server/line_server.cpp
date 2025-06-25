@@ -158,9 +158,11 @@ void LineServerComponent::flush_uart_buffer() {
     }
 
     // Log and discard stale partials (but do NOT flush)
-    if ((now - uart_buf_->last_write_time()) >= this->flush_timeout_ms_ && uart_buf_->available() > 0) {
-        ESP_LOGW(TAG, "UART line timed out without terminator — discarding partial: size=%zu", uart_buf_->available());
-        uart_buf_->clear();  // optional: or let it sit
+    if (this->flush_timeout_ms_ > 0 &&
+        (now - uart_buf_->last_write_time()) >= this->flush_timeout_ms_ &&
+        uart_buf_->available() > 0) {
+      ESP_LOGW(TAG, "UART line timed out without terminator — discarding partial: size=%zu", uart_buf_->available());
+      uart_buf_->clear();  // optional: discard or preserve
     }
 }
 
@@ -214,9 +216,11 @@ void LineServerComponent::flush_tcp_buffer() {
         this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(command.data()), command.size());
     }
 
-    // Step 2: discard if timeout occurs with incomplete command
-    std::string partial = this->tcp_buf_->flush_if_idle(now, this->flush_timeout_ms_);
-    if (!partial.empty()) {
-        ESP_LOGW(TAG, "TCP → UART [timeout flush]: \"%s\"", partial.c_str());
+    // Step 2: discard partial input only if flush timeout > 0
+    if (this->flush_timeout_ms_ > 0) {
+        std::string partial = this->tcp_buf_->flush_if_idle(now, this->flush_timeout_ms_);
+        if (!partial.empty()) {
+            ESP_LOGW(TAG, "TCP → UART [timeout flush]: \"%s\"", partial.c_str());
+        }
     }
 }
