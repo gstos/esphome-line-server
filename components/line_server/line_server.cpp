@@ -211,13 +211,12 @@ void LineServerComponent::flush_tcp_buffer() {
 
         ESP_LOGD(TAG, "TCP → UART [line]: '%s'", command.c_str());
 
-        this->write_array(reinterpret_cast<const uint8_t *>(command.data()), command.size());
+        this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(command.data()), command.size());
     }
 
-    // Step 2: flush partial command if idle
+    // Step 2: discard if timeout occurs with incomplete command
     std::string partial = this->tcp_buf_->flush_if_idle(now, this->flush_timeout_ms_);
     if (!partial.empty()) {
         ESP_LOGW(TAG, "TCP → UART [timeout flush]: \"%s\"", partial.c_str());
-        this->write_array(reinterpret_cast<const uint8_t *>(partial.data()), partial.size());
     }
 }
