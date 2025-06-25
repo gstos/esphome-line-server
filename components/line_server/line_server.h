@@ -11,7 +11,7 @@
 #include "esphome/core/helpers.h"
 #include "esphome/components/socket/socket.h"
 #include "esphome/components/uart/uart.h"
-#include "ring_buffer.h"
+#include "esphome/components/line_server/ring_buffer.h"
 
 #ifdef USE_BINARY_SENSOR
 #include "esphome/components/binary_sensor/binary_sensor.h"
