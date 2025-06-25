@@ -140,7 +140,7 @@ void LineServerComponent::flush_uart_buffer() {
     if (!this->uart_buf_)
         return;
 
-    const uint32_t now = millis();
+    const uint32_t now = esphome::millis();
 
     // Flush full lines
     while (true) {

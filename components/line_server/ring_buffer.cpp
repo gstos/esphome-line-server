@@ -14,7 +14,7 @@ public:
     if (free_space() == 0)
       return false;
     buf_[index_(head_++)] = byte;
-    last_write_time_ = esphome::millis();
+    last_write_time_ = ::esphome::millis();
     return true;
   }
 
