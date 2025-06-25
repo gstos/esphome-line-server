@@ -117,17 +117,17 @@ void LineServerComponent::cleanup() {
 }
 
 void LineServerComponent::read() {
-    if (!this->stream_ || !this->uart_buf_)
+    if (!this->uart_bus_ || !this->uart_buf_)
         return;
 
     constexpr size_t chunk_size = 128;
     uint8_t buf[chunk_size];
 
-    int available = this->stream_->available();  // ✅ correct
+    int available = this->uart_bus_->available();
     if (available <= 0)
         return;
 
-    size_t read_len = this->stream_->read_array(buf, std::min(available, static_cast<int>(chunk_size)));  // ✅ correct
+    size_t read_len = this->uart_bus_->read_array(buf, std::min(available, static_cast<int>(chunk_size)));
     ESP_LOGD(TAG, "Read %zu bytes from UART", read_len);
 
     if (read_len > 0) {
