@@ -124,6 +124,11 @@ void LineServerComponent::read() {
     uint8_t buf[chunk_size];
 
     while (true) {
+        int available = this->uart_bus_->available();
+        if (available <= 0)
+            break;
+
+        size_t to_read = std::min(static_cast<size_t>(available), chunk_size);
         size_t read_len = this->uart_bus_->read_array(buf, chunk_size);
         if (read_len == 0)
             break;
