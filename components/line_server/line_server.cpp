@@ -16,13 +16,13 @@ void LineServerComponent::setup() {
 
   // Ensure ring buffers are initialized if not set
   if (!this->uart_buf_) {
-    this->uart_buf_ = std::make_unique<RingBuffer>(uart_buf_size_, uart_terminator_);
+    this->uart_buf_ = std::unique_ptr<RingBuffer>(new RingBuffer(uart_buf_size_, uart_terminator_));
     ESP_LOGW(TAG, "UART buffer was not set explicitly. Using default size %zu, terminator '%s'",
              uart_buf_size_, uart_terminator_.c_str());
   }
 
   if (!this->tcp_buf_) {
-    this->tcp_buf_ = std::make_unique<RingBuffer>(tcp_buf_size_, tcp_terminator_);
+    this->tcp_buf_ = std::unique_ptr<RingBuffer>(new RingBuffer(tcp_buf_size_, tcp_terminator_));
     ESP_LOGW(TAG, "TCP buffer was not set explicitly. Using default size %zu, terminator '%s'",
              tcp_buf_size_, tcp_terminator_.c_str());
   }
@@ -199,7 +199,7 @@ void LineServerComponent::flush_tcp_buffer() {
     if (!this->tcp_buf_ || !this->stream_)
         return;
 
-    const uint32_t now = millis();
+    const uint32_t now = esphome::millis();
 
     // Step 1: send complete lines ending in \r
     while (true) {
@@ -219,6 +219,3 @@ void LineServerComponent::flush_tcp_buffer() {
         this->stream_->write_array(reinterpret_cast<const uint8_t *>(partial.data()), partial.size());
     }
 }
-
-LineServerComponent::Client::Client(std::unique_ptr<esphome::socket::Socket> socket, std::string identifier)
-  : socket(std::move(socket)), identifier(std::move(identifier)) {}

@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 
+#include "esphome/core/helpers.h"
+
 class RingBuffer {
 public:
     RingBuffer(size_t size, const std::string &terminator = "\r\n");

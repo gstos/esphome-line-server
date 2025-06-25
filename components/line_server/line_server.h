@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "esphome/core/component.h"
+#include "esphome/core/helpers.h"
 #include "esphome/components/socket/socket.h"
 #include "esphome/components/uart/uart.h"
 #include "ring_buffer.h"

@@ -1,9 +1,9 @@
-#pragma once
-
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
+
+#include "esphome/core/helpers.h"
 
 class RingBuffer {
 public:
@@ -14,7 +14,7 @@ public:
     if (free_space() == 0)
       return false;
     buf_[index_(head_++)] = byte;
-    last_write_time_ = millis();
+    last_write_time_ = esphome::millis();
     return true;
   }
 
