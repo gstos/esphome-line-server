@@ -117,7 +117,7 @@ void LineServerComponent::cleanup() {
 }
 
 void LineServerComponent::read() {
-    if (!this->uart_buf_ || !this->uart_bus_)
+    if (!this->uart_buf_)
         return;
 
     constexpr size_t chunk_size = 128;
@@ -128,17 +128,15 @@ void LineServerComponent::read() {
         if (available <= 0)
             break;
 
-        size_t to_read = std::min(static_cast<int>(chunk_size), available);
+        size_t to_read = std::min(available, static_cast<int>(chunk_size));
         size_t read_len = this->uart_bus_->read_array(buf, to_read);
+        ESP_LOGD(TAG, "Read %zu bytes from UART", read_len);
 
         if (read_len > 0) {
             size_t written = this->uart_buf_->write_array(buf, read_len);
             if (written < read_len) {
                 ESP_LOGW(TAG, "UART ring buffer overflow — dropped %zu bytes", read_len - written);
             }
-            ESP_LOGD(TAG, "Read %zu bytes from UART", read_len);
-        } else {
-            break;
         }
     }
 }
