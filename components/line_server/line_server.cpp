@@ -117,19 +117,19 @@ void LineServerComponent::cleanup() {
 }
 
 void LineServerComponent::read() {
-    if (!this->uart_buf_ || !this->available())
+    if (!this->uart_buf_ || !this->uart_bus_)
         return;
 
     constexpr size_t chunk_size = 128;
     uint8_t buf[chunk_size];
 
     while (true) {
-        int available = this->available();
+        int available = this->uart_bus_->available();
         if (available <= 0)
             break;
 
         size_t to_read = std::min(static_cast<int>(chunk_size), available);
-        size_t read_len = this->read_array(buf, to_read);
+        size_t read_len = this->uart_bus_->read_array(buf, to_read);
 
         if (read_len > 0) {
             size_t written = this->uart_buf_->write_array(buf, read_len);
