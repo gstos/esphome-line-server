@@ -22,9 +22,9 @@
 
 using esphome::line_server::RingBuffer;
 
-class LineServerComponent : public esphome::Component, public esphome::uart::UARTDevice {
+class LineServerComponent : public esphome::Component {
 public:
-    using UARTDevice::UARTDevice;  // Inherit constructor
+    void set_uart_parent(esphome::uart::UARTComponent *parent) { this->uart_bus_ = parent; }
 
     void set_uart_config(size_t size, const std::string &term) {
         uart_buf_size_ = size;
@@ -44,6 +44,8 @@ public:
     void set_uart_terminator(const std::string &term) { uart_terminator_ = term; }
     void set_tcp_terminator(const std::string &term) { tcp_terminator_ = term; }
 
+    void set_port(uint16_t port) { port_ = port; }
+
 #ifdef USE_BINARY_SENSOR
     void set_connected_sensor(esphome::binary_sensor::BinarySensor *connected) { connected_sensor_ = connected; }
 #endif
@@ -57,8 +59,6 @@ public:
     void on_shutdown() override;
 
     float get_setup_priority() const override { return esphome::setup_priority::AFTER_WIFI; }
-
-    void set_port(uint16_t port) { port_ = port; }
 
 protected:
     void publish_sensor();
@@ -76,6 +76,9 @@ protected:
         std::string identifier;
         bool disconnected = false;
     };
+
+    esphome::uart::UARTComponent *uart_bus_{nullptr};                 // reference to UART bus
+    std::unique_ptr<esphome::uart::UARTDevice> stream_{nullptr};
 
     uint16_t port_{};
 

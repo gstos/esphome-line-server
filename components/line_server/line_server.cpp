@@ -19,13 +19,13 @@ void LineServerComponent::setup() {
   // Ensure ring buffers are initialized if not set
   if (!this->uart_buf_) {
     this->uart_buf_ = std::unique_ptr<RingBuffer>(new RingBuffer(uart_buf_size_, uart_terminator_));
-    ESP_LOGW(TAG, "UART buffer was not set explicitly. Using default size %zu, terminator '%s'",
+    ESP_LOGCONFIG(TAG, "UART buffer was not set explicitly. Using default size %zu, terminator '%s'",
              uart_buf_size_, uart_terminator_.c_str());
   }
 
   if (!this->tcp_buf_) {
     this->tcp_buf_ = std::unique_ptr<RingBuffer>(new RingBuffer(tcp_buf_size_, tcp_terminator_));
-    ESP_LOGW(TAG, "TCP buffer was not set explicitly. Using default size %zu, terminator '%s'",
+    ESP_LOGCONFIG(TAG, "TCP buffer was not set explicitly. Using default size %zu, terminator '%s'",
              tcp_buf_size_, tcp_terminator_.c_str());
   }
 
@@ -123,11 +123,11 @@ void LineServerComponent::read() {
     constexpr size_t chunk_size = 128;
     uint8_t buf[chunk_size];
 
-    int available = this->stream_->available();  // KEY FIX
+    int available = this->stream_->available();  // ✅ correct
     if (available <= 0)
         return;
 
-    size_t read_len = this->stream_->read_array(buf, std::min(available, static_cast<int>(chunk_size)));  // KEY FIX
+    size_t read_len = this->stream_->read_array(buf, std::min(available, static_cast<int>(chunk_size)));  // ✅ correct
     ESP_LOGD(TAG, "Read %zu bytes from UART", read_len);
 
     if (read_len > 0) {

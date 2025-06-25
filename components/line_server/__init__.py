@@ -20,8 +20,8 @@ DEPENDENCIES = ["uart", "network"]
 MULTI_CONF = True
 
 ns = cg.global_ns
-UARTDevice = uart.UARTDevice
-LineServerComponent = ns.class_("LineServerComponent", cg.Component, UARTDevice)
+
+LineServerComponent = ns.class_("LineServerComponent", cg.Component)
 
 
 def validate_buffer_size(buffer_size):
