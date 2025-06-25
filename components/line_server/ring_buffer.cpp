@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+#include "esphome/core/hal.h"
 #include "esphome/core/helpers.h"
 
 class RingBuffer {
