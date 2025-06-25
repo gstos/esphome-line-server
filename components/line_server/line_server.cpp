@@ -58,14 +58,14 @@ void LineServerComponent::loop() {
 
 void LineServerComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "Line Server:");
-  ESP_LOGCONFIG(TAG, "  Listening on: %s:%u", esphome::network::get_use_address().c_str(), this->port_);
-  ESP_LOGCONFIG(TAG, "UART buffer: size=%zu, terminator=%s",
+  ESP_LOGCONFIG(TAG, "- Listening on: %s:%u", esphome::network::get_use_address().c_str(), this->port_);
+  ESP_LOGCONFIG(TAG, "- UART buffer: size=%zu, terminator=%s",
       uart_buf_size_,
       esphome::format_hex_pretty((const uint8_t*)uart_terminator_.data(), uart_terminator_.size()).c_str());
-  ESP_LOGCONFIG(TAG, "TCP buffer: size=%zu, terminator=%s",
+  ESP_LOGCONFIG(TAG, "- TCP buffer: size=%zu, terminator=%s",
       tcp_buf_size_,
       esphome::format_hex_pretty((const uint8_t*)tcp_terminator_.data(), tcp_terminator_.size()).c_str());
-  ESP_LOGCONFIG(TAG, "  Flush timeout: %ums", flush_timeout_ms_);
+  ESP_LOGCONFIG(TAG, "- Flush timeout: %ums", flush_timeout_ms_);
 
 #ifdef USE_BINARY_SENSOR
   LOG_BINARY_SENSOR("  ", "Connected:", this->connected_sensor_);
@@ -117,17 +117,17 @@ void LineServerComponent::cleanup() {
 }
 
 void LineServerComponent::read() {
-    if (!this->stream_ || !this->uart_buf_)
+    if (!this->uart_buf_)
         return;
 
     constexpr size_t chunk_size = 128;
     uint8_t buf[chunk_size];
 
-    int available = this->stream_->available();
+    int available = this->available();
     if (available <= 0)
         return;
 
-    size_t read_len = this->stream_->read_array(buf, std::min(available, static_cast<int>(chunk_size)));
+    size_t read_len = this->read_array(buf, std::min(available, static_cast<int>(chunk_size)));
     ESP_LOGD(TAG, "Read %zu bytes from UART", read_len);
 
     if (read_len > 0) {
@@ -150,7 +150,7 @@ void LineServerComponent::flush_uart_buffer() {
         if (line.empty())
             break;
 
-        ESP_LOGD(TAG, "UART → TCP [line]: \"%s\"", line.c_str());
+        ESP_LOGD(TAG, "UART → TCP [line]: '%s'", line.c_str());
         for (Client &client : this->clients_) {
             if (!client.disconnected)
                 client.socket->write(reinterpret_cast<const uint8_t *>(line.data()), line.size());
@@ -198,7 +198,7 @@ void LineServerComponent::write() {
 }
 
 void LineServerComponent::flush_tcp_buffer() {
-    if (!this->tcp_buf_ || !this->stream_)
+    if (!this->tcp_buf_)
         return;
 
     const uint32_t now = esphome::millis();
@@ -209,15 +209,15 @@ void LineServerComponent::flush_tcp_buffer() {
         if (command.empty())
             break;
 
-        ESP_LOGD(TAG, "TCP → UART [line]: \"%s\"", command.c_str());
+        ESP_LOGD(TAG, "TCP → UART [line]: '%s'", command.c_str());
 
-        this->stream_->write_array(reinterpret_cast<const uint8_t *>(command.data()), command.size());
+        this->write_array(reinterpret_cast<const uint8_t *>(command.data()), command.size());
     }
 
     // Step 2: flush partial command if idle
     std::string partial = this->tcp_buf_->flush_if_idle(now, this->flush_timeout_ms_);
     if (!partial.empty()) {
         ESP_LOGW(TAG, "TCP → UART [timeout flush]: \"%s\"", partial.c_str());
-        this->stream_->write_array(reinterpret_cast<const uint8_t *>(partial.data()), partial.size());
+        this->write_array(reinterpret_cast<const uint8_t *>(partial.data()), partial.size());
     }
 }

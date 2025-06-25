@@ -22,11 +22,9 @@
 
 using esphome::line_server::RingBuffer;
 
-class LineServerComponent : public esphome::Component {
+class LineServerComponent : public esphome::Component, public esphome::uart::UARTDevice {
 public:
-    LineServerComponent() = default;
-    explicit LineServerComponent(esphome::uart::UARTComponent *stream) : stream_{stream} {}
-    void set_uart_parent(esphome::uart::UARTComponent *parent) { this->stream_ = parent; }
+    using UARTDevice::UARTDevice;  // Inherit constructor
 
     void set_uart_config(size_t size, const std::string &term) {
         uart_buf_size_ = size;
@@ -38,21 +36,19 @@ public:
         tcp_terminator_ = term;
     }
 
-    void set_flush_timeout(uint32_t ms) {
-        flush_timeout_ms_ = ms;
-    }
+    void set_flush_timeout(uint32_t ms) { flush_timeout_ms_ = ms; }
 
-    void set_uart_buffer_size(size_t size) { this->uart_buf_size_ = size; }
-    void set_tcp_buffer_size(size_t size) { this->tcp_buf_size_ = size; }
+    void set_uart_buffer_size(size_t size) { uart_buf_size_ = size; }
+    void set_tcp_buffer_size(size_t size) { tcp_buf_size_ = size; }
 
-    void set_uart_terminator(const std::string &term) { this->uart_terminator_ = term; }
-    void set_tcp_terminator(const std::string &term) { this->tcp_terminator_ = term; }
+    void set_uart_terminator(const std::string &term) { uart_terminator_ = term; }
+    void set_tcp_terminator(const std::string &term) { tcp_terminator_ = term; }
 
 #ifdef USE_BINARY_SENSOR
-    void set_connected_sensor(esphome::binary_sensor::BinarySensor *connected) { this->connected_sensor_ = connected; }
+    void set_connected_sensor(esphome::binary_sensor::BinarySensor *connected) { connected_sensor_ = connected; }
 #endif
 #ifdef USE_SENSOR
-    void set_connection_count_sensor(esphome::sensor::Sensor *connection_count) { this->connection_count_sensor_ = connection_count; }
+    void set_connection_count_sensor(esphome::sensor::Sensor *connection_count) { connection_count_sensor_ = connection_count; }
 #endif
 
     void setup() override;
@@ -62,11 +58,10 @@ public:
 
     float get_setup_priority() const override { return esphome::setup_priority::AFTER_WIFI; }
 
-    void set_port(uint16_t port) { this->port_ = port; }
+    void set_port(uint16_t port) { port_ = port; }
 
 protected:
     void publish_sensor();
-
     void accept();
     void cleanup();
     void read();
@@ -76,14 +71,12 @@ protected:
 
     struct Client {
         Client(std::unique_ptr<esphome::socket::Socket> socket, std::string identifier)
-            : socket(std::move(socket)), identifier{identifier} {}
-
-        std::unique_ptr<esphome::socket::Socket> socket{nullptr};
-        std::string identifier{};
-        bool disconnected{false};
+            : socket(std::move(socket)), identifier(std::move(identifier)) {}
+        std::unique_ptr<esphome::socket::Socket> socket;
+        std::string identifier;
+        bool disconnected = false;
     };
 
-    esphome::uart::UARTComponent *stream_{nullptr};
     uint16_t port_{};
 
     size_t uart_buf_size_ = 1024;
