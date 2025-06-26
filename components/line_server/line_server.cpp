@@ -128,12 +128,12 @@ void LineServerComponent::read() {
         if (available <= 0)
             break;
 
-        size_t to_read = std::min(static_cast<size_t>(available), chunk_size);
-        size_t read_len = this->uart_bus_->read_array(buf, chunk_size);
+        size_t to_read = std::min<size_t>(available, chunk_size);
+        size_t read_len = this->uart_bus_->read_array(buf, to_read);
         if (read_len == 0)
             break;
 
-        ESP_LOGD(TAG, "Read %zu bytes from UART", read_len);
+        ESP_LOGD(TAG, "Read %zu bytes from UART of %zu avaialble", read_len, available);
 
         size_t written = this->uart_buf_->write_array(buf, read_len);
         if (written < read_len) {

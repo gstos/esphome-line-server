@@ -60,6 +60,20 @@ namespace esphome {
       return "";
     }
 
+    std::pair<uint8_t*, size_t> RingBuffer::next_free_ptr_and_size() {
+        if (head_ >= tail_) {
+        	// Space from head_ to end, or up to tail_ if buffer not full
+        	size_t space = (tail_ == 0) ? size_ - head_ - 1 : size_ - head_;
+        	if (space == 0) return {nullptr, 0};
+        	return {buf_.get() + head_, space};
+    	} else {
+        	// Space from head_ to tail_ - 1
+        	size_t space = tail_ - head_ - 1;
+        	if (space == 0) return {nullptr, 0};
+        	return {buf_.get() + head_, space};
+    	}
+	}
+
     size_t RingBuffer::available() const {
       return head_ - tail_;
     }

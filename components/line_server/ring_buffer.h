@@ -16,6 +16,7 @@ namespace esphome {
             size_t write_array(const uint8_t *data, size_t len);
             std::string read_line();
             std::string flush_if_idle(uint32_t now, uint32_t timeout_ms);
+            std::pair<uint8_t*, size_t> next_free_ptr_and_size();
             size_t available() const;
             size_t free_space() const;
             void clear();
