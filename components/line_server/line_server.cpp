@@ -230,22 +230,36 @@ void LineServerComponent::flush_tcp_buffer() {
 
     const uint32_t now = esphome::millis();
 
-    // Step 1: send complete lines ending in \r
+    // Step 1: send complete lines ending in terminator
     while (true) {
         std::string command = this->tcp_buf_->read_line();
         if (command.empty())
             break;
 
         ESP_LOGD(TAG, "TCP → UART [line]: '%s'", command.c_str());
-
         this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(command.data()), command.size());
     }
 
-    // Step 2: discard partial input only if flush timeout > 0
-    if (this->tcp_flush_timeout_ms_ > 0) {
-        std::string partial = this->tcp_buf_->flush_if_idle(now, this->tcp_flush_timeout_ms_);
-        if (!partial.empty()) {
-            ESP_LOGW(TAG, "TCP → UART [timeout flush]: \"%s\"", partial.c_str());
+    // Step 2: handle stale partials
+    if (this->tcp_flush_timeout_ms_ > 0 &&
+        (now - tcp_buf_->last_write_time()) >= this->tcp_flush_timeout_ms_ &&
+        tcp_buf_->available() > 0) {
+
+        if (this->tcp_timeout_callback_) {
+            std::string partial = tcp_buf_->read_partial();  // More appropriate than read_line()
+            std::string processed = this->tcp_timeout_callback_(partial);
+
+            if (!processed.empty()) {
+                ESP_LOGW(TAG, "TCP → UART [timeout flush]: \"%s\"", processed.c_str());
+                this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(processed.data()), processed.size());
+            } else {
+                ESP_LOGW(TAG, "TCP input timed out and was discarded by lambda");
+            }
+        } else {
+            std::string partial = tcp_buf_->read_partial();
+            ESP_LOGW(TAG, "TCP input timed out without terminator — discarding partial: size=%zu", partial.size());
         }
+
+        tcp_buf_->clear();  // Always clear after timeout handling
     }
 }
