@@ -15,15 +15,21 @@ namespace esphome {
             bool write(uint8_t byte);
             size_t write_array(const uint8_t *data, size_t len);
             std::string read_line();
-            std::string RingBuffer::read_partial() {
-                return std::string(this->buffer_.begin(), this->buffer_.end());
-            }
+            std::string RingBuffer::read_partial();
             std::string flush_if_idle(uint32_t now, uint32_t timeout_ms);
-            std::pair<uint8_t*, size_t> next_free_ptr_and_size();
             size_t available() const;
             size_t free_space() const;
             void clear();
             uint32_t last_write_time() const;
+
+            struct BufferSlice {
+                uint8_t* ptr;
+                size_t size;
+            };
+            BufferSlice next_write_chunk();
+
+            bool is_empty() const { return head_ == tail_; }
+            bool is_full() const { return (head_ + 1) % size_ == tail_; }
 
         private:
             size_t index_(size_t pos) const;
