@@ -131,53 +131,31 @@ void LineServerComponent::cleanup() {
 }
 
 void LineServerComponent::read() {
-     if (!this->uart_bus_)
-         return;
-
-     uint8_t buf[128];
-     uint8_t buf_size = sizeof(temp);
-
-     if this->has_active_clients() {
-         RingBuffer *target_buf = has_clients ? this->uart_buf_.get() : nullptr;
-     };
-
-
-     while (this->uart_bus_->available() > 0) {
-         size_t read_len = std::min<size_t>(this->uart_bus_->available(), sizeof(temp));
-
-         if (!this->uart_bus_->read_array(temp, read_len)) {
-             ESP_LOGE(TAG, "UART read failed for %zu bytes", read_len);
-             break;
-         }
-
-        if (target_buf) {
-            size_t written = target_buf->write_array(temp, read_len);
-            if (written < read_len) {
-                ESP_LOGW(TAG, "UART buffer overflow — dropped %zu bytes", read_len - written);
-            }
-            ESP_LOGD(TAG, "Read %zu bytes from UART", written);
-        } else {
-            ESP_LOGV(TAG, "Discarded %zu bytes from UART (no clients connected)", read_len);
-            // silently discard, or optionally process/log
-        }
-    }
-}
-
-void LineServerComponent::read() {
     if (!this->uart_buf_)
         return;
+
+    uint8_t temp[128];
 
     while (true) {
         int available = this->uart_bus_->available();
         if (available <= 0)
             break;
 
-        auto chunk = this->uart_buf_->next_write_chunk();
-        if (chunk.ptr == nullptr || chunk.size == 0)
-            break;  // No space left to write
+        uint8_t *chunk_ptr = temp;
+        size_t chunk_size = sizeof(temp);
+        bool write_to_ring = false;
 
-        size_t read_len = std::min<size_t>(available, chunk.size);
-        bool read_ok = this->uart_bus_->read_array(chunk.ptr, read_len);
+        if (this->has_active_clients()) {
+            auto chunk = this->uart_buf_->next_write_chunk();
+            if (chunk.ptr == nullptr || chunk.size == 0)
+                break;
+            chunk_ptr = chunk.ptr;
+            chunk_size = chunk.size;
+            write_to_ring = true;
+        }
+
+        size_t read_len = std::min<size_t>(available, chunk_size);
+        bool read_ok = this->uart_bus_->read_array(chunk_ptr, read_len);
 
         ESP_LOGD(TAG, "Read %zu bytes from UART of %d available", read_len, available);
 
@@ -186,8 +164,11 @@ void LineServerComponent::read() {
             break;
         }
 
-        // Manually advance head since we bypassed write()
-        this->uart_buf_->advance_head(read_len);
+        if (write_to_ring) {
+            this->uart_buf_->advance_head(read_len);
+        } else {
+            ESP_LOGV(TAG, "Discarded %zu bytes from UART (no clients connected)", read_len);
+        }
     }
 }
 
