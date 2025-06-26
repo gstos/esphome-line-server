@@ -55,6 +55,8 @@ public:
     void set_keepalive_interval(uint32_t interval_ms) { keepalive_interval_ms_ = interval_ms; }
     void set_keepalive_message(const std::string &message) { keepalive_message_ = message; }
 
+    void set_uart_timeout(bool drop) { drop_on_uart_timeout_ = drop; }
+
     void send_uart_keepalive();
 
     uint32_t last_keepalive_ = 0;
