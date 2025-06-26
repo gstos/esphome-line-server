@@ -97,12 +97,15 @@ protected:
 
     size_t uart_buf_size_ = 1024;
     std::string uart_terminator_ = "\r\n";
+    uint32_t uart_flush_timeout_ms_ = 500;
 
     size_t tcp_buf_size_ = 512;
     std::string tcp_terminator_ = "\r";
-
     uint32_t tcp_flush_timeout_ms_ = 300;
-    uint32_t uart_flush_timeout_ms_ = 500;
+
+    void flush_uart_rx_buffer();
+
+    bool uart_busy_ = false;
 
 #ifdef USE_BINARY_SENSOR
     esphome::binary_sensor::BinarySensor *connected_sensor_ = nullptr;
@@ -113,8 +116,6 @@ protected:
 
     std::unique_ptr<RingBuffer> uart_buf_;
     std::unique_ptr<RingBuffer> tcp_buf_;
-
-    void flush_uart_rx_buffer();
 
     std::unique_ptr<esphome::socket::Socket> socket_;
     std::vector<Client> clients_;

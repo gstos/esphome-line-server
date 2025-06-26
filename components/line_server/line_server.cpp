@@ -117,12 +117,50 @@ void LineServerComponent::accept() {
 }
 
 void LineServerComponent::cleanup() {
-  auto active = [](const Client &c) { return !c.disconnected; };
-  auto cutoff = std::partition(this->clients_.begin(), this->clients_.end(), active);
-  if (cutoff != this->clients_.end()) {
-    this->clients_.erase(cutoff, this->clients_.end());
-    this->publish_sensor();
-  }
+    auto active = [](const Client &c) { return !c.disconnected; };
+    auto cutoff = std::partition(this->clients_.begin(), this->clients_.end(), active);
+    if (cutoff != this->clients_.end()) {
+        this->clients_.erase(cutoff, this->clients_.end());
+        this->publish_sensor();
+     }
+
+     if (this->clients_.empty() && this->uart_busy_) {
+         ESP_LOGW(TAG, "UART marked busy but no TCP clients — clearing flag");
+         this->uart_busy_ = false;
+     }
+}
+
+void LineServerComponent::read() {
+     if (!this->uart_bus_)
+         return;
+
+     uint8_t buf[128];
+     uint8_t buf_size = sizeof(temp);
+
+     if this->has_active_clients() {
+         RingBuffer *target_buf = has_clients ? this->uart_buf_.get() : nullptr;
+     };
+
+
+     while (this->uart_bus_->available() > 0) {
+         size_t read_len = std::min<size_t>(this->uart_bus_->available(), sizeof(temp));
+
+         if (!this->uart_bus_->read_array(temp, read_len)) {
+             ESP_LOGE(TAG, "UART read failed for %zu bytes", read_len);
+             break;
+         }
+
+        if (target_buf) {
+            size_t written = target_buf->write_array(temp, read_len);
+            if (written < read_len) {
+                ESP_LOGW(TAG, "UART buffer overflow — dropped %zu bytes", read_len - written);
+            }
+            ESP_LOGD(TAG, "Read %zu bytes from UART", written);
+        } else {
+            ESP_LOGV(TAG, "Discarded %zu bytes from UART (no clients connected)", read_len);
+            // silently discard, or optionally process/log
+        }
+    }
 }
 
 void LineServerComponent::read() {
@@ -165,6 +203,8 @@ void LineServerComponent::flush_uart_buffer() {
         if (line.empty())
             break;
 
+        this->uart_busy_ = false;
+
         ESP_LOGD(TAG, "UART → TCP [line]: '%s'", line.c_str());
         for (Client &client : this->clients_) {
             if (!client.disconnected)
@@ -193,7 +233,7 @@ void LineServerComponent::flush_uart_buffer() {
         } else {
             ESP_LOGW(TAG, "UART line timed out without terminator — discarding partial: size=%zu", uart_buf_->available());
         }
-
+        this->uart_busy_ = false;
         uart_buf_->clear();  // Always clear after handling
 
         if (this->drop_on_uart_timeout_) {
@@ -240,7 +280,7 @@ void LineServerComponent::write() {
 }
 
 void LineServerComponent::flush_tcp_buffer() {
-    if (!this->tcp_buf_)
+    if (!this->tcp_buf_ || this->uart_busy_)
         return;
 
     const uint32_t now = esphome::millis();
@@ -252,6 +292,7 @@ void LineServerComponent::flush_tcp_buffer() {
             break;
 
         ESP_LOGD(TAG, "TCP → UART [line]: '%s'", command.c_str());
+        this->uart_busy_ = true;  // Prevent re-entrancy
         this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(command.data()), command.size());
     }
 
