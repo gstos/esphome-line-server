@@ -52,6 +52,12 @@ public:
     void set_uart_timeout_callback(std::function<std::string(const std::string &)> cb) {
         this->uart_timeout_callback_ = std::move(cb);
     }
+    void send_uart_keepalive()
+
+    uint32_t last_keepalive_ = 0;
+    uint32_t keepalive_interval_ms_ = 0;
+    std::string keepalive_message_;
+    bool drop_on_uart_timeout_ = false;
 
 #ifdef USE_BINARY_SENSOR
     void set_connected_sensor(esphome::binary_sensor::BinarySensor *connected) { connected_sensor_ = connected; }

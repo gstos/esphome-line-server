@@ -11,6 +11,9 @@ CONF_UART_BUFFER_SIZE = "uart_buffer_size"
 CONF_UART_TERMINATOR = "uart_terminator"
 CONF_UART_TIMEOUT = "uart_timeout"
 CONF_UART_TIMEOUT_LAMBDA = "uart_timeout_lambda"
+CONF_UART_TIMEOUT_DROP_CLIENTS = "uart_timeout_drop_clients"
+CONF_UART_KEEPALIVE_INTERVAL = "uart_keepalive_interval"
+CONF_UART_KEEPALIVE_MESSAGE = "uart_keepalive_message"
 
 CONF_TCP_BUFFER_SIZE = "tcp_buffer_size"
 CONF_TCP_TERMINATOR = "tcp_terminator"
@@ -61,6 +64,10 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_TCP_TERMINATOR, default="\r"): validate_terminator,
             cv.Optional(CONF_TCP_TIMEOUT, default="300ms"): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_TCP_TIMEOUT_LAMBDA): cv.returning_lambda,
+
+            cv.Optional(CONF_UART_TIMEOUT_DROP_CLIENTS, default=False): cv.boolean,
+            cv.Optional(CONF_UART_KEEPALIVE_INTERVAL, default="0s"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_UART_KEEPALIVE_MESSAGE, default=""): cv.string,
             }
         )
     .extend(cv.COMPONENT_SCHEMA)
@@ -77,6 +84,9 @@ async def to_code(config):
     cg.add(var.set_tcp_terminator(config[CONF_TCP_TERMINATOR]))
     cg.add(var.set_tcp_flush_timeout(config[CONF_TCP_TIMEOUT]))
     cg.add(var.set_uart_flush_timeout(config[CONF_UART_TIMEOUT]))
+    cg.add(var.set_keepalive_message(keepalive))
+    cg.add(var.set_keepalive_interval(interval.total_milliseconds))
+    cg.add(var.set_drop_on_uart_timeout(True))
 
     if CONF_UART_TIMEOUT_LAMBDA in config:
         uart_lambda_ = await cg.process_lambda(

@@ -49,10 +49,11 @@ void LineServerComponent::setup() {
 
 void LineServerComponent::loop() {
   this->accept();
-  this->read();              // UART → buffer
-  this->flush_uart_buffer(); // UART → clients (on \r\n or timeout)
-  this->write();             // TCP → buffer
-  this->flush_tcp_buffer();  // TCP buffer → UART
+  this->read();                // UART → buffer
+  this->flush_uart_buffer();   // UART → clients (on \r\n or timeout)
+  this->write();               // TCP → buffer
+  this->flush_tcp_buffer();    // TCP buffer → UART
+  this->send_uart_keepalive(); // Keep-alive if needed (no clients connected)
   this->cleanup();
 }
 
@@ -187,6 +188,14 @@ void LineServerComponent::flush_uart_buffer() {
         }
 
         uart_buf_->clear();  // Always clear after handling
+
+        if (this->drop_on_uart_timeout_) {
+            ESP_LOGW(TAG, "UART timeout — dropping TCP clients");
+            for (auto &client : this->clients_) {
+                if (!client.disconnected)
+                    client.socket->close();
+            }
+        }
     }
 }
 
@@ -261,4 +270,23 @@ void LineServerComponent::flush_tcp_buffer() {
 
         tcp_buf_->clear();  // Always clear after timeout handling
     }
+}
+
+void LineServerComponent::send_uart_keepalive() {
+  if (this->clients_.empty() && this->keepalive_interval_ms_ > 0) {
+    uint32_t now = esphome::millis();
+    if (now - this->last_keepalive_ >= this->keepalive_interval_ms_) {
+      if (!this->keepalive_message_.empty()) {
+        std::string msg = this->keepalive_message_;
+        // Append TCP terminator if missing
+        if (!msg.ends_with(this->tcp_terminator_)) {
+          msg += this->tcp_terminator_;
+        }
+
+        this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(msg.data()), msg.size());
+        ESP_LOGD(TAG, "UART keep-alive sent: '%s'", msg.c_str());
+      }
+      this->last_keepalive_ = now;
+    }
+  }
 }
