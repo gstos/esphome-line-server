@@ -36,15 +36,22 @@ public:
         tcp_terminator_ = term;
     }
 
+    void set_port(uint16_t port) { port_ = port; }
     void set_tcp_buffer_size(size_t size) { tcp_buf_size_ = size; }
     void set_tcp_flush_timeout(uint32_t ms) { tcp_flush_timeout_ms_ = ms; }
     void set_tcp_terminator(const std::string &term) { tcp_terminator_ = term; }
+    std::function<std::string(const std::string &)> tcp_timeout_callback_{};
+    void set_tcp_timeout_callback(std::function<std::string(const std::string &)> cb) {
+        this->tcp_timeout_callback_ = std::move(cb);
+    }
 
     void set_uart_buffer_size(size_t size) { uart_buf_size_ = size; }
     void set_uart_flush_timeout(uint32_t ms) { uart_flush_timeout_ms_ = ms; }
     void set_uart_terminator(const std::string &term) { uart_terminator_ = term; }
-
-    void set_port(uint16_t port) { port_ = port; }
+    std::function<std::string(const std::string &)> uart_timeout_callback_{};
+    void set_uart_timeout_callback(std::function<std::string(const std::string &)> cb) {
+        this->uart_timeout_callback_ = std::move(cb);
+    }
 
 #ifdef USE_BINARY_SENSOR
     void set_connected_sensor(esphome::binary_sensor::BinarySensor *connected) { connected_sensor_ = connected; }

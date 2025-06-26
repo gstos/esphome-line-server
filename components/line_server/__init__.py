@@ -8,11 +8,14 @@ from esphome.const import (
     )
 
 CONF_UART_BUFFER_SIZE = "uart_buffer_size"
-CONF_TCP_BUFFER_SIZE = "tcp_buffer_size"
 CONF_UART_TERMINATOR = "uart_terminator"
+CONF_UART_TIMEOUT = "uart_timeout"
+CONF_UART_TIMEOUT_LAMBDA = "uart_timeout_lambda"
+
+CONF_TCP_BUFFER_SIZE = "tcp_buffer_size"
 CONF_TCP_TERMINATOR = "tcp_terminator"
 CONF_TCP_TIMEOUT = "tcp_timeout"
-CONF_UART_TIMEOUT = "uart_timeout"
+CONF_TCP_TIMEOUT_LAMBDA = "tcp_timeout_lambda"
 
 AUTO_LOAD = ["socket"]
 
@@ -44,21 +47,25 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(LineServerComponent),
             cv.Optional(CONF_PORT, default=6638): cv.port,
+
             cv.Optional(CONF_UART_BUFFER_SIZE, default=256): cv.All(
-                cv.positive_int, validate_buffer_size
-            ),
-            cv.Optional(CONF_TCP_BUFFER_SIZE, default=256): cv.All(
                 cv.positive_int, validate_buffer_size
                 ),
             cv.Optional(CONF_UART_TERMINATOR, default="\r\n"): validate_terminator,
+            cv.Optional(CONF_UART_TIMEOUT, default="500ms"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_UART_TIMEOUT_LAMBDA): cv.returning_lambda,
+
+            cv.Optional(CONF_TCP_BUFFER_SIZE, default=256): cv.All(
+                cv.positive_int, validate_buffer_size
+                ),
             cv.Optional(CONF_TCP_TERMINATOR, default="\r"): validate_terminator,
             cv.Optional(CONF_TCP_TIMEOUT, default="300ms"): cv.positive_time_period_milliseconds,
-            cv.Optional(CONF_UART_TIMEOUT, default="500ms"): cv.positive_time_period_milliseconds,
-        }
-    )
+            cv.Optional(CONF_TCP_TIMEOUT_LAMBDA): cv.returning_lambda,
+            }
+        )
     .extend(cv.COMPONENT_SCHEMA)
     .extend(uart.UART_DEVICE_SCHEMA),
-)
+    )
 
 
 async def to_code(config):
@@ -70,6 +77,22 @@ async def to_code(config):
     cg.add(var.set_tcp_terminator(config[CONF_TCP_TERMINATOR]))
     cg.add(var.set_tcp_flush_timeout(config[CONF_TCP_TIMEOUT]))
     cg.add(var.set_uart_flush_timeout(config[CONF_UART_TIMEOUT]))
+
+    if CONF_UART_TIMEOUT_LAMBDA in config:
+        uart_lambda_ = await cg.process_lambda(
+            config[CONF_UART_TIMEOUT_LAMBDA],
+            [],
+            return_type=cg.std_string,
+            )
+        cg.add(var.set_uart_timeout_callback(uart_lambda_))
+
+    if CONF_TCP_TIMEOUT_LAMBDA in config:
+        tcp_lambda_ = await cg.process_lambda(
+            config[CONF_TCP_TIMEOUT_LAMBDA],
+            [],
+            return_type=cg.std_string,
+            )
+        cg.add(var.set_tcp_timeout_callback(tcp_lambda_))
 
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)

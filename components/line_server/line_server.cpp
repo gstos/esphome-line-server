@@ -165,12 +165,29 @@ void LineServerComponent::flush_uart_buffer() {
         }
     }
 
-    // Log and discard stale partials (but do NOT flush)
+    // Handle stale partials
     if (this->uart_flush_timeout_ms_ > 0 &&
         (now - uart_buf_->last_write_time()) >= this->uart_flush_timeout_ms_ &&
         uart_buf_->available() > 0) {
-      ESP_LOGW(TAG, "UART line timed out without terminator — discarding partial: size=%zu", uart_buf_->available());
-      uart_buf_->clear();  // optional: discard or preserve
+
+        if (this->uart_timeout_callback_) {
+            std::string partial = uart_buf_->read_line();  // Optional: switch to read_partial()
+            std::string processed = this->uart_timeout_callback_(partial);
+
+            if (!processed.empty()) {
+                ESP_LOGW(TAG, "UART → TCP [timeout flush]: \'%s\'", processed.c_str());
+                for (Client &client : this->clients_) {
+                    if (!client.disconnected)
+                        client.socket->write(reinterpret_cast<const uint8_t *>(processed.data()), processed.size());
+                }
+            } else {
+                ESP_LOGW(TAG, "UART line timed out and was discarded by lambda");
+            }
+        } else {
+            ESP_LOGW(TAG, "UART line timed out without terminator — discarding partial: size=%zu", uart_buf_->available());
+        }
+
+        uart_buf_->clear();  // Always clear after handling
     }
 }
 
