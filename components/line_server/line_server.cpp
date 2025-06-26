@@ -117,12 +117,30 @@ void LineServerComponent::accept() {
 }
 
 void LineServerComponent::cleanup() {
-    auto active = [](const Client &c) { return !c.disconnected; };
-    auto cutoff = std::partition(this->clients_.begin(), this->clients_.end(), active);
-    if (cutoff != this->clients_.end()) {
-        this->clients_.erase(cutoff, this->clients_.end());
-        this->publish_sensor();
-     }
+  auto active = [](const Client &c) { return !c.disconnected; };
+  auto cutoff = std::partition(this->clients_.begin(), this->clients_.end(), active);
+  if (cutoff != this->clients_.end()) {
+    this->clients_.erase(cutoff, this->clients_.end());
+    this->publish_sensor();
+  }
+
+  // Safe release of UART state when all clients gone
+  if (!this->has_active_clients()) {
+    // Clear state if buffer is empty (response must have been consumed)
+    if (this->uart_buf_ && this->uart_buf_->available() == 0) {
+      this->uart_state_ = UartState::Free;
+    }
+
+    // Failsafe: UART still waiting, buffer never flushed, and no timeout
+    if (this->uart_state_ == UartState::WaitingResponse &&
+        this->uart_flush_timeout_ms_ == 0 &&
+        this->uart_buf_ && this->uart_buf_->available() > 0) {
+
+      ESP_LOGW(TAG, "Deadlock prevention: UART stuck in WaitingResponse without timeout — clearing buffer");
+      this->uart_buf_->clear();
+      this->uart_state_ = UartState::Free;
+    }
+  }
 }
 
 void LineServerComponent::read() {
@@ -256,7 +274,7 @@ void LineServerComponent::write() {
 }
 
 void LineServerComponent::flush_tcp_buffer() {
-    if (!this->tcp_buf_ || !this->uart_state_ == UartState::Free)
+    if (!this->tcp_buf_ || this->uart_state_ != UartState::Free)
         return;
 
     const uint32_t now = esphome::millis();
@@ -268,7 +286,7 @@ void LineServerComponent::flush_tcp_buffer() {
             break;
 
         ESP_LOGD(TAG, "TCP → UART [line]: '%s'", command.c_str());
-        this->uart_state_ = UartState::WaitingResponse
+        this->uart_state_ = UartState::WaitingResponse;
         this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(command.data()), command.size());
     }
 
