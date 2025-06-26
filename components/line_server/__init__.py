@@ -84,9 +84,9 @@ async def to_code(config):
     cg.add(var.set_tcp_terminator(config[CONF_TCP_TERMINATOR]))
     cg.add(var.set_tcp_flush_timeout(config[CONF_TCP_TIMEOUT]))
     cg.add(var.set_uart_flush_timeout(config[CONF_UART_TIMEOUT]))
-    cg.add(var.set_keepalive_message(keepalive))
-    cg.add(var.set_keepalive_interval(interval.total_milliseconds))
-    cg.add(var.set_drop_on_uart_timeout(True))
+    cg.add(var.set_keepalive_message(config[CONF_UART_KEEPALIVE_MESSAGE]))
+    cg.add(var.set_keepalive_interval(config[CONF_UART_KEEPALIVE_INTERVAL]))
+    cg.add(var.set_drop_on_uart_timeout(config[CONF_UART_TIMEOUT_DROP_CLIENTS]))
 
     if CONF_UART_TIMEOUT_LAMBDA in config:
         uart_lambda_ = await cg.process_lambda(
