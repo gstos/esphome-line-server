@@ -121,28 +121,27 @@ void LineServerComponent::read() {
     if (!this->uart_buf_)
         return;
 
-    constexpr size_t chunk_size = 256;
-    uint8_t buf[chunk_size];
-
     while (true) {
         int available = this->uart_bus_->available();
         if (available <= 0)
             break;
 
-        size_t read_len = std::min<size_t>(available, chunk_size);
-        bool read_ok = this->uart_bus_->read_array(buf, read_len);
+        auto chunk = this->uart_buf_->next_write_chunk();
+        if (chunk.ptr == nullptr || chunk.size == 0)
+            break;  // No space left to write
 
-        ESP_LOGD(TAG, "Read %zu bytes from UART of %zu available", read_len, available);
+        size_t read_len = std::min<size_t>(available, chunk.size);
+        bool read_ok = this->uart_bus_->read_array(chunk.ptr, read_len);
 
-        if (! read_ok){
-            ESP_LOGE(TAG, "Failing while reading %zu bytes from UART of %zu available", read_len, available);
+        ESP_LOGD(TAG, "Read %zu bytes from UART of %d available", read_len, available);
+
+        if (!read_ok) {
+            ESP_LOGE(TAG, "UART read failed for %zu bytes", read_len);
             break;
-		}
-
-        size_t written = this->uart_buf_->write_array(buf, read_len);
-        if (written < read_len) {
-            ESP_LOGW(TAG, "UART ring buffer overflow — dropped %zu bytes", read_len - written);
         }
+
+        // Manually advance head since we bypassed write()
+        this->uart_buf_->advance_head(read_len);
     }
 }
 
