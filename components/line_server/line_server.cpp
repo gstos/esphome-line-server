@@ -62,10 +62,11 @@ void LineServerComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "- UART buffer: size=%zu, terminator=%s",
       uart_buf_size_,
       esphome::format_hex_pretty((const uint8_t*)uart_terminator_.data(), uart_terminator_.size()).c_str());
-  ESP_LOGCONFIG(TAG, "- TCP buffer: size=%zu, terminator=%s",
+ESP_LOGCONFIG(TAG, "- UART flush timeout: %ums", uart_flush_timeout_ms_);
+ESP_LOGCONFIG(TAG, "- TCP buffer: size=%zu, terminator=%s",
       tcp_buf_size_,
       esphome::format_hex_pretty((const uint8_t*)tcp_terminator_.data(), tcp_terminator_.size()).c_str());
-  ESP_LOGCONFIG(TAG, "- Flush timeout: %ums", flush_timeout_ms_);
+  ESP_LOGCONFIG(TAG, "- TCP flush timeout: %ums", tcp_flush_timeout_ms_);
 
 #ifdef USE_BINARY_SENSOR
   LOG_BINARY_SENSOR("  ", "Connected:", this->connected_sensor_);
@@ -120,7 +121,7 @@ void LineServerComponent::read() {
     if (!this->uart_buf_)
         return;
 
-    constexpr size_t chunk_size = 128;
+    constexpr size_t chunk_size = 256;
     uint8_t buf[chunk_size];
 
     while (true) {
@@ -165,8 +166,8 @@ void LineServerComponent::flush_uart_buffer() {
     }
 
     // Log and discard stale partials (but do NOT flush)
-    if (this->flush_timeout_ms_ > 0 &&
-        (now - uart_buf_->last_write_time()) >= this->flush_timeout_ms_ &&
+    if (this->uart_flush_timeout_ms_ > 0 &&
+        (now - uart_buf_->last_write_time()) >= this->uart_flush_timeout_ms_ &&
         uart_buf_->available() > 0) {
       ESP_LOGW(TAG, "UART line timed out without terminator — discarding partial: size=%zu", uart_buf_->available());
       uart_buf_->clear();  // optional: discard or preserve
@@ -224,8 +225,8 @@ void LineServerComponent::flush_tcp_buffer() {
     }
 
     // Step 2: discard partial input only if flush timeout > 0
-    if (this->flush_timeout_ms_ > 0) {
-        std::string partial = this->tcp_buf_->flush_if_idle(now, this->flush_timeout_ms_);
+    if (this->tcp_flush_timeout_ms_ > 0) {
+        std::string partial = this->tcp_buf_->flush_if_idle(now, this->tcp_flush_timeout_ms_);
         if (!partial.empty()) {
             ESP_LOGW(TAG, "TCP → UART [timeout flush]: \"%s\"", partial.c_str());
         }

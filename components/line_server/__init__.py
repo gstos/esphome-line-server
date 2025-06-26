@@ -5,13 +5,14 @@ from esphome.const import (
     CONF_ID,
     CONF_PORT,
     CONF_BUFFER_SIZE,
-    CONF_TIMEOUT,
     )
 
 CONF_UART_BUFFER_SIZE = "uart_buffer_size"
 CONF_TCP_BUFFER_SIZE = "tcp_buffer_size"
 CONF_UART_TERMINATOR = "uart_terminator"
 CONF_TCP_TERMINATOR = "tcp_terminator"
+CONF_TCP_TIMEOUT = "tcp_timeout"
+CONF_UART_TIMEOUT = "uart_timeout"
 
 AUTO_LOAD = ["socket"]
 
@@ -51,7 +52,8 @@ CONFIG_SCHEMA = cv.All(
                 ),
             cv.Optional(CONF_UART_TERMINATOR, default="\r\n"): validate_terminator,
             cv.Optional(CONF_TCP_TERMINATOR, default="\r"): validate_terminator,
-            cv.Optional(CONF_TIMEOUT, default=300): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_TCP_TIMEOUT, default=300): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_UART_TIMEOUT, default=300): cv.positive_time_period_milliseconds,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
@@ -66,7 +68,8 @@ async def to_code(config):
     cg.add(var.set_tcp_buffer_size(config[CONF_TCP_BUFFER_SIZE]))
     cg.add(var.set_uart_terminator(config[CONF_UART_TERMINATOR]))
     cg.add(var.set_tcp_terminator(config[CONF_TCP_TERMINATOR]))
-    cg.add(var.set_flush_timeout(config[CONF_TIMEOUT]))
+    cg.add(var.set_tcp_flush_timeout(config[CONF_TCP_TIMEOUT]))
+    cg.add(var.set_uart_flush_timeout(config[CONF_UART_TIMEOUT]))
 
     await cg.register_component(var, config)
     await uart.register_uart_device(var, config)

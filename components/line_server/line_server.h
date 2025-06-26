@@ -36,13 +36,13 @@ public:
         tcp_terminator_ = term;
     }
 
-    void set_flush_timeout(uint32_t ms) { flush_timeout_ms_ = ms; }
+    void set_tcp_buffer_size(size_t size) { tcp_buf_size_ = size; }
+    void set_tcp_flush_timeout(uint32_t ms) { tcp_flush_timeout_ms_ = ms; }
+    void set_tcp_terminator(const std::string &term) { tcp_terminator_ = term; }
 
     void set_uart_buffer_size(size_t size) { uart_buf_size_ = size; }
-    void set_tcp_buffer_size(size_t size) { tcp_buf_size_ = size; }
-
+    void set_uart_flush_timeout(uint32_t ms) { uart_flush_timeout_ms_ = ms; }
     void set_uart_terminator(const std::string &term) { uart_terminator_ = term; }
-    void set_tcp_terminator(const std::string &term) { tcp_terminator_ = term; }
 
     void set_port(uint16_t port) { port_ = port; }
 
