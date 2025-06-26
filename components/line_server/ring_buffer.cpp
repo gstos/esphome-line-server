@@ -99,6 +99,11 @@ namespace esphome {
         return {nullptr, 0};
     }
 
+    void RingBuffer::advance_head(size_t n) {
+        head_ += n;
+        last_write_time_ = ::esphome::millis();
+    }
+
     size_t RingBuffer::available() const {
       return head_ - tail_;
     }

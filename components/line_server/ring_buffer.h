@@ -27,6 +27,7 @@ namespace esphome {
                 size_t size;
             };
             BufferSlice next_write_chunk();
+            void advance_head(size_t n);
 
             bool is_empty() const { return head_ == tail_; }
             bool is_full() const { return (head_ + 1) % size_ == tail_; }
