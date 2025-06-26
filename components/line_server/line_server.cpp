@@ -49,11 +49,11 @@ void LineServerComponent::setup() {
 
 void LineServerComponent::loop() {
   this->accept();
-  this->read();                // UART → buffer
-  this->flush_uart_buffer();   // UART → clients (on \r\n or timeout)
-  this->write();               // TCP → buffer
-  this->flush_tcp_buffer();    // TCP buffer → UART
-  this->send_uart_keepalive(); // Keep-alive if needed (no clients connected)
+  this->read();                   // UART → buffer
+  this->flush_uart_buffer();      // UART → clients (on \r\n or timeout)
+  this->write();                  // TCP → buffer
+  this->flush_tcp_buffer();       // TCP buffer → UART
+  // this->send_uart_keepalive(); // Keep-alive if needed (no clients connected)
   this->cleanup();
 }
 
@@ -123,11 +123,6 @@ void LineServerComponent::cleanup() {
         this->clients_.erase(cutoff, this->clients_.end());
         this->publish_sensor();
      }
-
-     if (this->clients_.empty() && this->uart_busy_) {
-         ESP_LOGW(TAG, "UART marked busy but no TCP clients — clearing flag");
-         this->uart_busy_ = false;
-     }
 }
 
 void LineServerComponent::read() {
@@ -184,7 +179,7 @@ void LineServerComponent::flush_uart_buffer() {
         if (line.empty())
             break;
 
-        this->uart_busy_ = false;
+        this->uart_state_ = UartState::WaitingResponse;
 
         ESP_LOGD(TAG, "UART → TCP [line]: '%s'", line.c_str());
         for (Client &client : this->clients_) {
@@ -214,7 +209,7 @@ void LineServerComponent::flush_uart_buffer() {
         } else {
             ESP_LOGW(TAG, "UART line timed out without terminator — discarding partial: size=%zu", uart_buf_->available());
         }
-        this->uart_busy_ = false;
+        this->uart_state_ = UartState::Free;
         uart_buf_->clear();  // Always clear after handling
 
         if (this->drop_on_uart_timeout_) {
@@ -261,7 +256,7 @@ void LineServerComponent::write() {
 }
 
 void LineServerComponent::flush_tcp_buffer() {
-    if (!this->tcp_buf_ || this->uart_busy_)
+    if (!this->tcp_buf_ || !this->uart_state_ == UartState::Free)
         return;
 
     const uint32_t now = esphome::millis();
@@ -273,7 +268,7 @@ void LineServerComponent::flush_tcp_buffer() {
             break;
 
         ESP_LOGD(TAG, "TCP → UART [line]: '%s'", command.c_str());
-        this->uart_busy_ = true;  // Prevent re-entrancy
+        this->uart_state_ = UartState::WaitingResponse
         this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(command.data()), command.size());
     }
 

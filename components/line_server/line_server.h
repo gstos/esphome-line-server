@@ -22,6 +22,12 @@
 
 using esphome::line_server::RingBuffer;
 
+enum class UartState {
+    Free,
+    WaitingResponse,
+    WaitingKeepAlive
+  };
+
 class LineServerComponent : public esphome::Component {
 public:
     void set_uart_parent(esphome::uart::UARTComponent *parent) { this->uart_bus_ = parent; }
@@ -110,7 +116,7 @@ protected:
 
     void flush_uart_rx_buffer();
 
-    bool uart_busy_ = false;
+    UartState uart_state_ = UartState::Free;
 
 #ifdef USE_BINARY_SENSOR
     esphome::binary_sensor::BinarySensor *connected_sensor_ = nullptr;
@@ -124,5 +130,6 @@ protected:
 
     std::unique_ptr<esphome::socket::Socket> socket_;
     std::vector<Client> clients_;
+
     bool has_active_clients() const;
 };
