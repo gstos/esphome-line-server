@@ -52,7 +52,7 @@ public:
     void set_uart_timeout_callback(std::function<std::string(const std::string &)> cb) {
         this->uart_timeout_callback_ = std::move(cb);
     }
-    void send_uart_keepalive()
+    void send_uart_keepalive();
 
     uint32_t last_keepalive_ = 0;
     uint32_t keepalive_interval_ms_ = 0;
@@ -114,6 +114,9 @@ protected:
     std::unique_ptr<RingBuffer> uart_buf_;
     std::unique_ptr<RingBuffer> tcp_buf_;
 
+    void flush_uart_rx_buffer();
+
     std::unique_ptr<esphome::socket::Socket> socket_;
     std::vector<Client> clients_;
+    bool has_active_clients() const;
 };

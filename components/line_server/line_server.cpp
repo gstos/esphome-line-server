@@ -94,19 +94,26 @@ void LineServerComponent::publish_sensor() {
 }
 
 void LineServerComponent::accept() {
-  struct sockaddr_storage client_addr;
-  socklen_t client_addrlen = sizeof(client_addr);
-  std::unique_ptr<socket::Socket> client_sock =
-      this->socket_->accept(reinterpret_cast<struct sockaddr *>(&client_addr), &client_addrlen);
-  if (!client_sock)
-    return;
+    struct sockaddr_storage client_addr;
+    socklen_t client_addrlen = sizeof(client_addr);
+    std::unique_ptr<socket::Socket> client_sock =
+        this->socket_->accept(reinterpret_cast<struct sockaddr *>(&client_addr), &client_addrlen);
+    if (!client_sock)
+        return;
 
-  client_sock->setblocking(false);
-  std::string identifier = client_sock->getpeername();
-  this->clients_.emplace_back(std::move(client_sock), identifier);
+    if (!this->has_active_clients()) {
+        ESP_LOGW(TAG, "No active clients connected, flushing UART RX buffer");
+        if (this->uart_buf_)
+            this->uart_buf_->clear();
+        this->flush_uart_rx_buffer();
+    }
 
-  ESP_LOGD(TAG, "New client connected from %s", identifier.c_str());
-  this->publish_sensor();
+    client_sock->setblocking(false);
+    std::string identifier = client_sock->getpeername();
+    this->clients_.emplace_back(std::move(client_sock), identifier);
+
+    ESP_LOGD(TAG, "New client connected from %s", identifier.c_str());
+    this->publish_sensor();
 }
 
 void LineServerComponent::cleanup() {
@@ -273,20 +280,41 @@ void LineServerComponent::flush_tcp_buffer() {
 }
 
 void LineServerComponent::send_uart_keepalive() {
-  if (this->clients_.empty() && this->keepalive_interval_ms_ > 0) {
-    uint32_t now = esphome::millis();
-    if (now - this->last_keepalive_ >= this->keepalive_interval_ms_) {
-      if (!this->keepalive_message_.empty()) {
-        std::string msg = this->keepalive_message_;
-        // Append TCP terminator if missing
-        if (!msg.ends_with(this->tcp_terminator_)) {
-          msg += this->tcp_terminator_;
-        }
+    if (!this->clients_.empty() || this->keepalive_interval_ms_ == 0 || this->keepalive_message_.empty())
+        return;
 
-        this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(msg.data()), msg.size());
-        ESP_LOGD(TAG, "UART keep-alive sent: '%s'", msg.c_str());
-      }
-      this->last_keepalive_ = now;
+    uint32_t now = esphome::millis();
+    if (now - this->last_keepalive_ < this->keepalive_interval_ms_)
+        return;
+
+    std::string msg = this->keepalive_message_;
+    msg += this->tcp_terminator_;
+
+    this->uart_bus_->write_array(reinterpret_cast<const uint8_t *>(msg.data()), msg.size());
+    ESP_LOGD(TAG, "UART keep-alive sent: '%s'", msg.c_str());
+    this->last_keepalive_ = now;
+}
+
+void LineServerComponent::flush_uart_rx_buffer() {
+    uint8_t discard;
+    int count = 0;
+    while (this->uart_bus_->available() > 0) {
+        if (this->uart_bus_->read_byte(&discard)) {
+            count++;
+        } else {
+            break;
+        }
     }
+
+    if (count > 0)
+        ESP_LOGD(TAG, "Flushed %d bytes from UART RX buffer", count);
+}
+
+
+bool LineServerComponent::has_active_clients() const {
+  for (const auto &client : this->clients_) {
+    if (!client.disconnected)
+      return true;
   }
+  return false;
 }
