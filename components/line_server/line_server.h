@@ -88,7 +88,8 @@ protected:
     size_t tcp_buf_size_ = 512;
     std::string tcp_terminator_ = "\r";
 
-    uint32_t flush_timeout_ms_ = 100;
+    uint32_t tcp_flush_timeout_ms_ = 300;
+    uint32_t uart_flush_timeout_ms_ = 500;
 
 #ifdef USE_BINARY_SENSOR
     esphome::binary_sensor::BinarySensor *connected_sensor_ = nullptr;
