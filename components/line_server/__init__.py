@@ -52,8 +52,8 @@ CONFIG_SCHEMA = cv.All(
                 ),
             cv.Optional(CONF_UART_TERMINATOR, default="\r\n"): validate_terminator,
             cv.Optional(CONF_TCP_TERMINATOR, default="\r"): validate_terminator,
-            cv.Optional(CONF_TCP_TIMEOUT, default=300): cv.positive_time_period_milliseconds,
-            cv.Optional(CONF_UART_TIMEOUT, default=300): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_TCP_TIMEOUT, default="300ms"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_UART_TIMEOUT, default="500ms"): cv.positive_time_period_milliseconds,
         }
     )
     .extend(cv.COMPONENT_SCHEMA)
