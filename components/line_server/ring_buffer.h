@@ -15,7 +15,7 @@ namespace esphome {
             bool write(uint8_t byte);
             size_t write_array(const uint8_t *data, size_t len);
             std::string read_line();
-            std::string RingBuffer::read_partial();
+            std::string read_partial();
             std::string flush_if_idle(uint32_t now, uint32_t timeout_ms);
             size_t available() const;
             size_t free_space() const;
