@@ -52,6 +52,9 @@ public:
     void set_uart_timeout_callback(std::function<std::string(const std::string &)> cb) {
         this->uart_timeout_callback_ = std::move(cb);
     }
+    void set_keepalive_interval(uint32_t interval_ms) { keepalive_interval_ms_ = interval_ms; }
+    void set_keepalive_message(const std::string &message) { keepalive_message_ = message; }
+
     void send_uart_keepalive();
 
     uint32_t last_keepalive_ = 0;
